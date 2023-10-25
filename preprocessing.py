@@ -72,20 +72,15 @@ def preprocess_df(df):
     return pd.concat([tmp2, tmp1], axis=1)
 
 
-def get_n_balanced_df(df, y, n, label='label_n', pos_filter=None, x_filter=None):
+def get_n_balanced_df(df, y, n, label_n='label_n', label='label'):
     df = pd.concat([df, y], axis=1)
-    if pos_filter is None:
-        positive = df[(df[label] == 1) & (df['label'] != 'anomaly')].iloc[:n]
-    else:
-        positive = df[pos_filter].iloc[:n]
-    negative = df[df[label] == 0].iloc[:n]
+    positive = df[(df[label_n] == 1) & (df[label] != 'anomaly')].iloc[:n]
+
+    negative = df[df[label_n] == 0].iloc[:n]
 
     result = pd.concat([positive, negative])
 
-    y = result[label]
-    if x_filter is None:
-        X = result.loc[:, (result.columns != 'label_n') & (result.columns != 'label')]
-    else:
-        X = result.loc[:, x_filter]
+    y = result[label_n]
+    X = result.loc[:, (result.columns != label_n) & (result.columns != label)]
+
     return X, y
-# %%
