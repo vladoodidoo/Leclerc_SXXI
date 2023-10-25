@@ -93,3 +93,15 @@ def model_fit(model, phy_df, x_test, y_test):
         "training_metrics": evaluate(y_train, model.predict(X_train)),
         "testing_metrics": evaluate(y_test, model.predict(x_test))
     }
+
+def model_fit_network(model, cols, net_df):
+    X = preprocess_df(net_df[cols])
+    y = net_df[["label_n", "label"]]
+
+    X_train, y_train = get_n_balanced_df(X, y, 500, label="label", label_n="label_n")
+    model.fit(X_train, y_train)
+
+    return {
+        "training_metrics": evaluate(y_train, model.predict(X_train)),
+        "testing_metrics": evaluate(y["label_n"], model.predict(X))
+    }
