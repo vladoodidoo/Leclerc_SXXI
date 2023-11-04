@@ -1,10 +1,5 @@
 import pandas as pd
-from sklearn import set_config
-from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from skrub import TableVectorizer
 
 
 def load_network_csv(path_list) -> pd.DataFrame:
