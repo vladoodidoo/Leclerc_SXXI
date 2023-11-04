@@ -53,7 +53,7 @@ def time_split(df: pd.DataFrame, split_size: float) -> pd.DataFrame:
     df.drop(columns=["Time"], inplace=True)
 
     # Avoid duplicates
-    df.drop_duplicates(inplace=True)
+    # df.drop_duplicates(inplace=True)
 
     X, y = df.drop(columns=["label"]), df["label"]
 
@@ -93,6 +93,9 @@ def load_physical_csv(path_list) -> pd.DataFrame:
     # Remove unnecessary columns and typo in column name
     df.drop(columns=["Label_n", "Lable_n"], inplace=True)
     df.rename(columns={"Label": "label"}, inplace=True)
+
+    # Replace typo in label
+    df.label = df.label.replace('nomal', 'normal')
 
     # Encore boolean values
     val_and_pump = list(df.filter(regex="Val|Pump").columns)
