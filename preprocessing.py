@@ -1,86 +1,112 @@
 import pandas as pd
+from sklearn import set_config
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from skrub import TableVectorizer
 
 
-def load_physical_csv(path):
-    bad_format = pd.read_csv(path, encoding='utf-16')
-    columns = bad_format.columns[0].split("\t")
-    lines = [line.item().split("\t") for line in bad_format.iloc]
-    df = pd.DataFrame(columns=columns, data=lines)
-    return df.loc[:, (df.columns != 'Time') & (df.columns != 'Label')].astype({
-        'Pump_1': bool,
-        'Pump_2': bool,
-        'Pump_3': bool,
-        'Pump_4': bool,
-        'Pump_5': bool,
-        'Pump_6': bool,
-        'Valv_1': bool,
-        'Valv_2': bool,
-        'Valv_3': bool,
-        'Valv_4': bool,
-        'Valv_5': bool,
-        'Valv_6': bool,
-        'Valv_7': bool,
-        'Valv_8': bool,
-        'Valv_9': bool,
-        'Valv_10': bool,
-        'Valv_11': bool,
-        'Valv_12': bool,
-        'Valv_13': bool,
-        'Valv_14': bool,
-        'Valv_15': bool,
-        'Valv_16': bool,
-        'Valv_17': bool,
-        'Valv_18': bool,
-        'Valv_19': bool,
-        'Valv_20': bool,
-        'Valv_21': bool,
-        'Valv_22': bool,
-    }).astype(int)
+def load_network_csv(path_list) -> pd.DataFrame:
+    """
+    Load network csv file and parse dates
+    """
 
+    # concat all csv files
+    df = None
+    for path in path_list:
+        current_df = pd.read_csv(path, parse_dates=["Time"], engine="pyarrow")
+        # Strip column names
 
-def load_network_csv(path):
-    df = pd.read_csv(path)
-    df.columns = [s.strip() for s in df.columns]
-    df["flags"] = df["flags"].astype('str')
-    df["dport"] = df["dport"].astype('str')
+        current_df.columns = [s.strip() for s in current_df.columns]
+
+        if df is None:
+            df = current_df
+        else:
+            df = pd.concat([df, current_df])
+
+    # Remove unnecessary columns and basic preprocessing
+    columns_to_drop = [
+        "mac_s",
+        "mac_d",
+        "ip_s",
+        "ip_d",
+        "n_pkt_src",
+        "modbus_response",
+        "label_n",
+    ]
+    df.drop(columns=columns_to_drop, inplace=True)
+    df["flags"] = df["flags"].astype("str")
+    df["dport"] = df["dport"].astype("str")
+
     return df
 
 
-def get_one_hot_encoded_df(df):
-    return pd.get_dummies(df)
+def time_split(df: pd.DataFrame, split_size: float) -> pd.DataFrame:
+    """
+    Split dataframe into train and test set based on time
+
+    Args:
+        df (pd.DataFrame): Dataframe to split
+        split_size (float): Size of test set
+
+    Returns:
+        X_train, X_test, y_train, y_test: Train and test sets
+    """
+    df = df.sort_values(by="Time")
+    # Drop time column
+    df.drop(columns=["Time"], inplace=True)
+
+    # Avoid duplicates
+    df.drop_duplicates(inplace=True)
+
+    X, y = df.drop(columns=["label"]), df["label"]
+
+    # Split with shuffle=False to preserve time order
+    return train_test_split(X, y, test_size=0.2, shuffle=False)
 
 
-def get_object_columns(df):
-    return df.select_dtypes(include="object").columns.tolist()
+def load_physical_csv(path_list) -> pd.DataFrame:
+    """
+    Load physical csv files and basic preprocessing
 
+    Args:
+        path_list (list): List of paths to csv files
 
-def get_number_columns(df):
-    return df.select_dtypes(include="number").columns.tolist()
+    Returns:
+        pd.DataFrame: Dataframe with preprocessed data
+    """
 
+    df = None
+    # Concat all csv files
+    for path in path_list:
+        # Correct encoding
+        bad_format = pd.read_csv(path, encoding="utf-16")
+        columns = bad_format.columns[0].split("\t")
+        lines = [line.item().split("\t") for line in bad_format.iloc]
 
-def remove_nan_by_mean(df):
-    return df.fillna(df.mean())
+        # Create new dataframe
+        current_df = pd.DataFrame(columns=columns, data=lines)
+        # Parse dates
+        current_df.Time = pd.to_datetime(current_df.Time, dayfirst=True)
 
+        if df is None:
+            df = current_df
+        else:
+            df = pd.concat([df, current_df])
 
-def preprocess_df(df):
-    objects = get_object_columns(df)
-    tmp1 = get_one_hot_encoded_df(df[objects])
+    # Remove unnecessary columns and typo in column name
+    df.drop(columns=["Label_n", "Lable_n"], inplace=True)
+    df.rename(columns={"Label": "label"}, inplace=True)
 
-    numbers = get_number_columns(df)
-    tmp2 = remove_nan_by_mean(df[numbers])
+    # Encore boolean values
+    val_and_pump = list(df.filter(regex="Val|Pump").columns)
+    df[val_and_pump] = (
+        df[val_and_pump].map(lambda x: False if x == "false" else True).astype(int)
+    )
 
-    return pd.concat([tmp2, tmp1], axis=1)
+    # Convert object to numeric
+    sensors = list(df.filter(regex="Tank|Pump|Flow|Valv").columns)
+    df[sensors] = df[sensors].apply(pd.to_numeric)
 
-
-def get_n_balanced_df(df, y, n, label_n='label_n', label='label'):
-    df = pd.concat([df, y], axis=1)
-    positive = df[(df[label_n] == 1) & (df[label] != 'anomaly')].iloc[:n]
-
-    negative = df[df[label_n] == 0].iloc[:n]
-
-    result = pd.concat([positive, negative])
-
-    y = result[label_n]
-    X = result.loc[:, (result.columns != label_n) & (result.columns != label)]
-
-    return X, y
+    return df
