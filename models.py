@@ -1,4 +1,11 @@
+"""
+Models for anomaly detection and classification of attacks
+"""
+
 import numpy as np
+from sklearn.base import BaseEstimator
+from sklearn.ensemble import IsolationForest
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
     accuracy_score,
@@ -9,8 +16,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
+from sklearn.neighbors import LocalOutlierFactor
 from sklearn.pipeline import make_pipeline
-from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from skrub import TableVectorizer
 
@@ -80,85 +87,65 @@ def plot_confusion_matrix(
     ).plot(cmap="Blues", xticks_rotation="vertical")
 
 
-def generate_pipeline(model, X_train, y_train):
+def generate_pipeline():
     """
     Generate pipeline for model
-
-    Args:
-        model (sklearn model): Model to generate pipeline for
-        X_train (pd.DataFrame): Training data
-        y_train (pd.DataFrame): Training labels
 
     Returns:
         pipeline: Pipeline for model
     """
     pipeline = make_pipeline(
-        TableVectorizer(), SimpleImputer(strategy="median"), StandardScaler(), model
+        TableVectorizer(sparse_threshold=0.0),
+        SimpleImputer(strategy="median"),
+        StandardScaler(),
     )
-    pipeline.fit(X_train, y_train)
+
     return pipeline
 
 
-# def lof(df, contamination, preprocess=True):
-#     if preprocess:
-#         df = preprocess_df(df)
-#     model = LocalOutlierFactor(contamination=contamination, n_jobs=-1)
-#     y = np.array(model.fit_predict(df))
+def lof(X_test: np.ndarray, contamination: float) -> np.ndarray:
+    """
+    Local Outlier Factor model for anomaly detection
 
-#     return np.where(y == -1, 1, 0)
+    Args:
+        df (pd.DataFrame): Dataframe to run anomaly detection on
+        contamination (float): Percentage of outliers
+
+    Returns:
+        np.ndarray: Array of 1s and 0s, 1 being an outlier
+    """
+
+    pipeline = make_pipeline(
+        TableVectorizer(),
+        SimpleImputer(strategy="median"),
+        StandardScaler(),
+        LocalOutlierFactor(contamination=contamination, n_jobs=-1),
+    )
+
+    y_preds = np.array(pipeline.fit_predict(X_test))
+
+    return np.where(y_preds == -1, 1, 0)
 
 
-# def isolation_forest(df, contamination, preprocess=True):
-#     if preprocess:
-#         df = preprocess_df(df)
-#     model = IsolationForest(random_state=42, contamination=contamination)
-#     y = np.array(model.fit_predict(df))
+def isolation_forest(X_test: np.ndarray, contamination: float) -> np.ndarray:
+    """
+    Isolation Forest model for anomaly detection
 
-#     return np.where(y == -1, 1, 0)
+    Args:
+        df (pd.DataFrame): Dataframe to run anomaly detection on
+        contamination (float): Percentage of outliers
 
+    Returns:
+        np.ndarray: Array of 1s and 0s, 1 being an outlier
+    """
 
-# def svc(total_df, cols):
-#     X = preprocess_df(total_df[cols])
-#     y = total_df[["label_n", "label"]]
+    pipeline = make_pipeline(
+        TableVectorizer(),
+        SimpleImputer(strategy="median"),
+        StandardScaler(),
+        IsolationForest(random_state=42, contamination=contamination),
+    )
 
-#     X_train, y_train = get_n_balanced_df(X, y, 500, label="label", label_n="label_n")
+    y_preds = np.array(pipeline.fit_predict(X_test))
 
-#     model = SVC()
-#     model.fit(X_train, y_train)
-
-#     return {
-#         "training_metrics": evaluate(y_train, model.predict(X_train)),
-#         "testing_metrics": evaluate(y["label_n"], model.predict(X))
-#     }
-
-# def svc_physical(phy_df, x_test, y_test):
-#     pos_only = phy_df[phy_df["Label_n"] == 1].iloc[:500]
-#     neg_only = phy_df[phy_df["Label_n"] == 0].iloc[:500]
-
-#     training = pd.concat([pos_only, neg_only])
-
-#     X_train = training.loc[:, training.columns != "Label_n"]
-#     y_train = training["Label_n"]
-
-#     model = SVC()
-#     model.fit(X_train, y_train)
-
-#     return {
-#         "training_metrics": evaluate(y_train, model.predict(X_train)),
-#         "testing_metrics": evaluate(y_test, model.predict(x_test))
-#     }
-
-# def model_fit(model, phy_df, x_test, y_test):
-#     pos_only = phy_df[phy_df["Label_n"] == 1].iloc[:500]
-#     neg_only = phy_df[phy_df["Label_n"] == 0].iloc[:500]
-
-#     training = pd.concat([pos_only, neg_only])
-
-#     X_train = training.loc[:, training.columns != "Label_n"]
-#     y_train = training["Label_n"]
-#     model.fit(X_train, y_train)
-
-#     return {
-#         "training_metrics": evaluate(y_train, model.predict(X_train)),
-#         "testing_metrics": evaluate(y_test, model.predict(x_test))
-#     }
+    return np.where(y_preds == -1, 1, 0)

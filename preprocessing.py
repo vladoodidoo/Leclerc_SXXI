@@ -1,3 +1,7 @@
+"""
+Preprocessing functions for the data
+"""
+
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
@@ -34,31 +38,10 @@ def load_network_csv(path_list) -> pd.DataFrame:
     df["flags"] = df["flags"].astype("str")
     df["dport"] = df["dport"].astype("str")
 
+    # drop label with two small proportion
+    df = df[(df.label == "normal") | (df.label == "DoS") | (df.label == "MITM")]
+
     return df
-
-
-def time_split(df: pd.DataFrame, split_size: float) -> pd.DataFrame:
-    """
-    Split dataframe into train and test set based on time
-
-    Args:
-        df (pd.DataFrame): Dataframe to split
-        split_size (float): Size of test set
-
-    Returns:
-        X_train, X_test, y_train, y_test: Train and test sets
-    """
-    df = df.sort_values(by="Time")
-    # Drop time column
-    df.drop(columns=["Time"], inplace=True)
-
-    # Avoid duplicates
-    # df.drop_duplicates(inplace=True)
-
-    X, y = df.drop(columns=["label"]), df["label"]
-
-    # Split with shuffle=False to preserve time order
-    return train_test_split(X, y, test_size=0.2, shuffle=False)
 
 
 def load_physical_csv(path_list) -> pd.DataFrame:
@@ -95,7 +78,9 @@ def load_physical_csv(path_list) -> pd.DataFrame:
     df.rename(columns={"Label": "label"}, inplace=True)
 
     # Replace typo in label
-    df.label = df.label.replace('nomal', 'normal')
+    df.label = df.label.replace("nomal", "normal")
+
+    df = df[(df.label == "normal") | (df.label == "physical fault")]
 
     # Encore boolean values
     val_and_pump = list(df.filter(regex="Val|Pump").columns)
@@ -106,5 +91,61 @@ def load_physical_csv(path_list) -> pd.DataFrame:
     # Convert object to numeric
     sensors = list(df.filter(regex="Tank|Pump|Flow|Valv").columns)
     df[sensors] = df[sensors].apply(pd.to_numeric)
+
+    return df
+
+
+def time_split(df: pd.DataFrame, split_size: float) -> pd.DataFrame:
+    """
+    Split dataframe into train and test set based on time
+
+    Args:
+        df (pd.DataFrame): Dataframe to split
+        split_size (float): Size of test set
+
+    Returns:
+        X_train, X_test, y_train, y_test: Train and test sets
+    """
+    df = df.sort_values(by="Time")
+    # Drop time column
+    df.drop(columns=["Time"], inplace=True)
+
+    X, y = df.drop(columns=["label"]), df["label"]
+
+    # Split with shuffle=False to preserve time order
+    return train_test_split(X, y, test_size=0.2, shuffle=False)
+
+
+def generate_sample(df: pd.DataFrame, sample_size: int) -> pd.DataFrame:
+    """
+    Downsample dataframe in order to reduce computation time
+
+    Args:
+        df (pd.DataFrame): Dataframe to downsample
+        sample_size (int): Size of sample
+
+    Returns:
+        pd.DataFrame: Downsampled dataframe
+    """
+
+    # Sort by time and sample every nth row
+    df = df.sort_values(by="Time")
+    # Keep every nth row
+    df = df.iloc[:: df.shape[0] // sample_size, :]
+    return df
+
+
+def generate_binary_labels(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Generate binary labels from multiclass labels
+
+    Args:
+        df (pd.DataFrame): Dataframe with multiclass labels
+
+    Returns:
+        pd.DataFrame: Dataframe with binary labels 1 for anomaly, 0 for normal
+    """
+
+    df["binary_label"] = df.label.map(lambda x: 0 if x == "normal" else 1)
 
     return df
