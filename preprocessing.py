@@ -22,7 +22,8 @@ def load_network_csv(path_list) -> pd.DataFrame:
         if df is None:
             df = current_df
         else:
-            df = pd.concat([df, current_df])
+            df = pd.concat([df, current_df], ignore_index=True)
+
 
     # Remove unnecessary columns and basic preprocessing
     columns_to_drop = [
@@ -30,11 +31,12 @@ def load_network_csv(path_list) -> pd.DataFrame:
         "mac_d",
         "ip_s",
         "ip_d",
-        "n_pkt_src",
+        "sport", # Source port to be removed as it can be controlled by attacker.
         "modbus_response",
         "label_n",
     ]
     df.drop(columns=columns_to_drop, inplace=True)
+
     df["flags"] = df["flags"].astype("str")
     df["dport"] = df["dport"].astype("str")
 
@@ -71,17 +73,18 @@ def load_physical_csv(path_list) -> pd.DataFrame:
         if df is None:
             df = current_df
         else:
-            df = pd.concat([df, current_df])
+            df = pd.concat([df, current_df], ignore_index=True)
+
 
     # Remove unnecessary columns and typo in column name
-    df.drop(columns=["Label_n", "Lable_n"], inplace=True)
-    df.rename(columns={"Label": "label"}, inplace=True)
+    df.drop(columns=["Label_n", "Lable_n", "Flow_sensor_3"], inplace=True)
 
     # Replace typo in label
     df.label = df.label.replace("nomal", "normal")
 
     df = df[(df.label == "normal") | (df.label == "physical fault")]
 
+    df.rename(columns={"Label": "label"}, inplace=True)
     # Encore boolean values
     val_and_pump = list(df.filter(regex="Val|Pump").columns)
     df[val_and_pump] = (
@@ -89,7 +92,7 @@ def load_physical_csv(path_list) -> pd.DataFrame:
     )
 
     # Convert object to numeric
-    sensors = list(df.filter(regex="Tank|Pump|Flow|Valv").columns)
+    sensors = list(df.filter(regex="Tank|Flow").columns)
     df[sensors] = df[sensors].apply(pd.to_numeric)
 
     return df
