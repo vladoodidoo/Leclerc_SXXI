@@ -80,17 +80,10 @@ class EDA():
         df = self.df
         num_columns = self.num_cols
 
-        ncols = 1
-        nrows = (len(num_columns) // ncols) + (len(num_columns) % ncols != 0)
-        fig, axs = plt.subplots(nrows, ncols, figsize=(10, 15))
         for idx in range(len(num_columns)):
-            ax = axs[idx] if len(axs.shape) == 1 else axs[idx // ncols, idx % ncols]
             sns.kdeplot(data=df, x=num_columns[idx], hue=hue,
-                        ax=ax,
                         fill=True, palette="Set2")
-        fig.savefig(SAVE_PATH + self.prefix + "KDE_plots.png")
-        fig.show()
-    
+            plt.show()
     
     def categorical_analysis(self, hue: str) -> None:
         """
@@ -107,16 +100,11 @@ class EDA():
         df = self.df
         cat_columns = self.cat_cols
 
-        ncols = 1
-        nrows = len(cat_columns) // ncols + (len(cat_columns) % ncols != 0)
-        fig, axs = plt.subplots(nrows, ncols, figsize=(10, 15))
         for idx in range(len(cat_columns)):
-            ax = axs[idx] if len(axs.shape) == 1 else axs[idx // ncols, idx % ncols]
             sns.countplot(data=df, x=cat_columns[idx], hue=hue,
-                          ax=ax, palette="Set2")
-            ax.tick_params(axis='x', rotation=70)
-        fig.savefig(SAVE_PATH + self.prefix + "categorical.png")
-        fig.show()
+                          palette="Set2")
+            plt.tick_params(axis='x', rotation=70)
+            plt.show()
     
     
     def explore_data(self) -> None:
