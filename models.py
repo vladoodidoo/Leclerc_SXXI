@@ -3,11 +3,11 @@ Models for anomaly detection and classification of attacks
 """
 
 import numpy as np
-from sklearn.base import BaseEstimator
 from sklearn.ensemble import IsolationForest
 from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     ConfusionMatrixDisplay,
+    RocCurveDisplay,
     accuracy_score,
     balanced_accuracy_score,
     confusion_matrix,
@@ -71,11 +71,11 @@ def pretty_print_report(report: dict) -> None:
     )
 
 
-def plot_confusion_matrix(
+def evaluation_plot(
     y_true: np.ndarray, y_preds: np.ndarray, classes: list
 ) -> None:
     """
-    Plot confusion matrix
+    Plot confusion matrix and Roc curve
 
     Args:
         y_true (np.ndarray): True labels
