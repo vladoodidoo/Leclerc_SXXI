@@ -24,14 +24,13 @@ def load_network_csv(path_list) -> pd.DataFrame:
         else:
             df = pd.concat([df, current_df], ignore_index=True)
 
-
     # Remove unnecessary columns and basic preprocessing
     columns_to_drop = [
         "mac_s",
         "mac_d",
         "ip_s",
         "ip_d",
-        "sport", # Source port to be removed as it can be controlled by attacker.
+        "sport",  # Source port to be removed as it can be controlled by attacker.
         "modbus_response",
         "label_n",
     ]
@@ -44,6 +43,32 @@ def load_network_csv(path_list) -> pd.DataFrame:
     df = df[(df.label == "normal") | (df.label == "DoS") | (df.label == "MITM")]
 
     return df
+
+
+def time_split(df: pd.DataFrame, split_size: float = 0.2) -> pd.DataFrame:
+    """
+    Split dataframe into train and test set based on time
+
+    Args:
+        df (pd.DataFrame): Dataframe to split
+        split_size (float): Size of test set
+
+    Returns:
+        X_train, X_test, y_train, y_test: Train and test sets
+    """
+    df = df.sort_values(by="Time")
+    # Drop time column
+    df.drop(columns=["Time"], inplace=True)
+
+    # Avoid duplicates
+    df.drop_duplicates(inplace=True)
+
+    X, y = df.drop(columns=["label"]), df["label"]
+
+    X = pd.get_dummies(X, columns=["flags", "dport", "sport", "proto", "modbus_fn"])
+
+    # Split with shuffle=False to preserve time order
+    return train_test_split(X, y, test_size=split_size, shuffle=False)
 
 
 def load_physical_csv(path_list) -> pd.DataFrame:
@@ -74,7 +99,6 @@ def load_physical_csv(path_list) -> pd.DataFrame:
             df = current_df
         else:
             df = pd.concat([df, current_df], ignore_index=True)
-
 
     # Remove unnecessary columns and typo in column name
     df.drop(columns=["Label_n", "Lable_n", "Flow_sensor_3"], inplace=True)
@@ -111,12 +135,11 @@ def time_split(df: pd.DataFrame, split_size: float) -> pd.DataFrame:
     """
     df = df.sort_values(by="Time")
     # Drop time column
-    df.drop(columns=["Time"], inplace=True)
 
     X, y = df.drop(columns=["label"]), df["label"]
 
     # Split with shuffle=False to preserve time order
-    return train_test_split(X, y, test_size=0.2, shuffle=False)
+    return train_test_split(X, y, test_size=split_size, shuffle=False)
 
 
 def generate_sample(df: pd.DataFrame, sample_size: int) -> pd.DataFrame:
@@ -135,6 +158,25 @@ def generate_sample(df: pd.DataFrame, sample_size: int) -> pd.DataFrame:
     df = df.sort_values(by="Time")
     # Keep every nth row
     df = df.iloc[:: df.shape[0] // sample_size, :]
+    return df
+
+
+def downsample_df(df: pd.DataFrame, skips: int) -> pd.DataFrame:
+    """
+    Downsample dataframe in order to reduce computation time
+
+    Args:
+        df (pd.DataFrame): Dataframe to downsample
+        skips (int): Number of rows to skip
+
+    Returns:
+        pd.DataFrame: Downsampled dataframe
+    """
+
+    # Sort by time and sample every nth row
+    df = df.sort_values(by="Time")
+    # Keep every nth row
+    df = df.iloc[::skips, :]
     return df
 
 
