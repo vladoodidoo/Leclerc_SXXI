@@ -135,6 +135,7 @@ def time_split(df: pd.DataFrame, split_size: float) -> pd.DataFrame:
     """
     df = df.sort_values(by="Time")
     # Drop time column
+    df.drop(columns=["Time"], inplace=True)
 
     X, y = df.drop(columns=["label"]), df["label"]
 
