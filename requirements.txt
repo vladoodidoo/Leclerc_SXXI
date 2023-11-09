@@ -1,0 +1,9 @@
+skrub @ git+https://github.com/skrub-data/skrub.git
+pyarrow
+scikit-learn
+imbalanced-learn
+pandas
+numpy
+matplotlib
+seaborn
+tensorflow
