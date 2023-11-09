@@ -103,12 +103,12 @@ def load_physical_csv(path_list) -> pd.DataFrame:
     # Remove unnecessary columns and typo in column name
     df.drop(columns=["Label_n", "Lable_n", "Flow_sensor_3"], inplace=True)
 
+    df.rename(columns={"Label": "label"}, inplace=True)
+
     # Replace typo in label
     df.label = df.label.replace("nomal", "normal")
 
     df = df[(df.label == "normal") | (df.label == "physical fault")]
-
-    df.rename(columns={"Label": "label"}, inplace=True)
     # Encore boolean values
     val_and_pump = list(df.filter(regex="Val|Pump").columns)
     df[val_and_pump] = (
