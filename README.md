@@ -17,6 +17,7 @@ The project contains multiple libraries in order to simplify the code and to mak
 The `eda.ipynb` notebook contains the code for the data analysis.
 The `benchmark_models.ipynb` notebook contains the code for the model and comparison with other models.
 The `LSTM.ipynb` notebook contains the code for the LSTM model.
+The `rapport.pdf` pdf file contains the report.
 
 ## Dependencies
 - skrub - 0.0.1.dev0
